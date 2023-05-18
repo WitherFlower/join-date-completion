@@ -39,43 +39,39 @@ class PackData {
 function getData() {
     let rawPackData = JSON.parse(fs_1.default.readFileSync("./data/PackToMap.json", 'utf8'));
     let rawScoreData = JSON.parse(fs_1.default.readFileSync("./data/PackScoreData.json", 'utf8'));
+    let rawYearData = JSON.parse(fs_1.default.readFileSync("./data/YearToMap.json", 'utf8'));
     const data = new PackData();
     const LAST_PACK = 341;
+    let totalClears = 0;
+    let totalMaps = 0;
     for (let packId = 1; packId <= LAST_PACK; packId++) {
         const packMapIds = rawPackData["S" + packId];
         let currentPackClears = 0;
         packMapIds.forEach((mapId) => {
             if (rawScoreData[mapId.toString()]['score'] > 0) {
                 currentPackClears++;
+                totalClears++;
             }
         });
+        totalMaps += packMapIds.length;
         data.beatmap_packs[packId] = new PackStats(currentPackClears, packMapIds.length);
     }
-    /*
-        const packs_completion_row = packs_completion_rows[0]
-        data.packs_completion = {
-            scoresCount: packs_completion_row.scoresCount,
-            beatmapCount: packs_completion_row.beatmapCount,
-        }
-    
-        data.years = []
-        for (let i = 0; i < years_rows.length; i++) {
-            const row = years_rows[i];
-            data.years.push({
-                year: row.year,
-                scoresCount: row.scoresCount,
-                beatmapCount: row.beatmapCount,
-            });
-        }
-    
-        const completion_row = completion_rows[0]
-        data.completion = {
-            scoresCount: completion_row.scoresCount,
-            beatmapCount: completion_row.beatmapCount,
-        } */
+    data.packs_completion = new CompletionStats(totalClears, totalMaps);
+    const years = Object.keys(rawYearData);
+    data.years = [];
+    years.forEach(year => {
+        let currentYearClears = 0;
+        rawYearData[year].forEach((mapId) => {
+            if (rawScoreData[mapId.toString()]['score'] > 0) {
+                currentYearClears++;
+            }
+        });
+        data.years.push(new YearStats(parseInt(year), currentYearClears, rawYearData[year].length));
+    });
     console.log(data.beatmap_packs[1]);
     console.log(data.beatmap_packs[149]);
     console.log(data.beatmap_packs[150]);
+    console.log(data.years);
     return data;
 }
 function formatNumber(number) {
@@ -381,7 +377,7 @@ function drawYearsProgressbars(ctx, yearsData) {
     }
 }
 function drawCompletionHeader(ctx) {
-    const text = "Completion up to 2011-08-11";
+    const text = "Completion up to ppv2";
     const barY = 200 + (32 + 51) * 4; // Y-coordinate of the 5th progress bar
     // Set the shadow effect for the header text
     ctx.shadowBlur = 5;
@@ -460,7 +456,7 @@ function createImage() {
     drawLegend(ctx);
     drawYearsProgressbars(ctx, data.years);
     drawCompletionHeader(ctx);
-    drawCompletionProgressbar(ctx, data.completion);
+    // drawCompletionProgressbar(ctx, data.completion)
     // Save PNG file
     const buffer = canvas.toBuffer('image/png');
     fs_1.default.writeFileSync(completeFilePath, buffer);

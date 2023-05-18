@@ -45,6 +45,8 @@ function getData(): PackData {
 
 	let rawPackData = JSON.parse(fs.readFileSync("./data/PackToMap.json", 'utf8'));
 	let rawScoreData = JSON.parse(fs.readFileSync("./data/PackScoreData.json", 'utf8'));
+	let rawYearData = JSON.parse(fs.readFileSync("./data/YearToMap.json", 'utf8'));
+	
 	const data = new PackData();
 	
 	const LAST_PACK = 341;
@@ -70,27 +72,32 @@ function getData(): PackData {
  
 	
 	data.packs_completion = new CompletionStats(totalClears, totalMaps);
-/*
-	data.years = []
-	for (let i = 0; i < years_rows.length; i++) {
-		const row = years_rows[i];
-		data.years.push({
-			year: row.year,
-			scoresCount: row.scoresCount,
-			beatmapCount: row.beatmapCount,
-		});
-	}
+	const years = Object.keys(rawYearData)
 
-	const completion_row = completion_rows[0]
-	data.completion = {
-		scoresCount: completion_row.scoresCount,
-		beatmapCount: completion_row.beatmapCount,
-	} */
+	data.years = []
+	years.forEach(year => {
+
+		let currentYearClears = 0
+		rawYearData[year].forEach((mapId: number) => {
+			if(rawScoreData[mapId.toString()]['score'] > 0){
+				currentYearClears++;
+			}
+		});
+
+		data.years.push(new YearStats(
+			parseInt(year),
+			currentYearClears,
+			rawYearData[year].length
+		));
+	});
+	
 	
 	console.log(data.beatmap_packs[1])
 	console.log(data.beatmap_packs[149])
 	console.log(data.beatmap_packs[150])
 	
+	console.log(data.years)
+
 	return data;
 }
 
@@ -463,7 +470,7 @@ function drawYearsProgressbars(ctx: CanvasRenderingContext2D, yearsData: string 
 }
 
 function drawCompletionHeader(ctx: CanvasRenderingContext2D) {
-	const text = "Completion up to 2011-08-11";
+	const text = "Completion up to ppv2";
 	const barY = 200 + (32 + 51) * 4; // Y-coordinate of the 5th progress bar
 
 	// Set the shadow effect for the header text
@@ -559,7 +566,7 @@ function createImage() {
 	drawLegend(ctx)
 	drawYearsProgressbars(ctx, data.years)
 	drawCompletionHeader(ctx)
-	drawCompletionProgressbar(ctx, data.completion)
+	// drawCompletionProgressbar(ctx, data.completion)
 
 	// Save PNG file
 	const buffer = canvas.toBuffer('image/png');
