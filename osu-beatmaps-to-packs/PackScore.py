@@ -14,13 +14,13 @@ import csv
 score_file = "WitherFlower_scores_2023-05-17_064522.csv"
 top_score_file = "top_score_nomod_2023-05-17_070753.csv"
 
-scoreData = {}
+score_data = {}
 
 with open(score_file, encoding="UTF-8") as scoreCSV:
 
     reader = csv.DictReader(scoreCSV)
     for row in reader:
-        scoreData.update(
+        score_data.update(
             { row['beatmap_id']: { 'score': row['score'] } }
         )
 
@@ -28,12 +28,12 @@ with open(top_score_file, encoding="UTF-8") as scoreCSV:
     
     reader = csv.DictReader(scoreCSV)
     for row in reader:
-        if scoreData.keys().__contains__(row['beatmap_id']):
-            scoreData[row['beatmap_id']].update(
+        if score_data.keys().__contains__(row['beatmap_id']):
+            score_data[row['beatmap_id']].update(
                 {'top_nomod_score' : row['top_score_nomod']}
             )
         else:
-            scoreData.update(
+            score_data.update(
                 { row['beatmap_id']: { 
                     'score': 0, 
                     'top_nomod_score' : row['top_score_nomod'] 
@@ -52,8 +52,11 @@ with open(top_score_file, encoding="UTF-8") as scoreCSV:
     #         currentScore.append(int(lineData[2]))
     #         scoreData.append(currentScore)
 
-# print(scoreData)
-print(scoreData['9007'])
+print(f"Disco Prince : {score_data['75']}")
+print(f"paraparaMAX : {score_data['9007']}")
+
+with open("PackScoreData.json", 'w') as outfile:
+    json.dump(score_data, outfile)
 
 # packData = json.load(open("PackToMap.json", 'r'))
 # total = 0
