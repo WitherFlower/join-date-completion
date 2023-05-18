@@ -16,17 +16,17 @@ if (fontPath) {
 }
 const font = 'Aller';
 class CompletionStats {
-    constructor() {
-        this.scoresCount = 0;
-        this.beatmapCount = 0;
+    constructor(scoresCount = 0, beatmapCount = 0) {
+        this.scoresCount = scoresCount;
+        this.beatmapCount = beatmapCount;
     }
 }
 class PackStats extends CompletionStats {
 }
 class YearStats extends CompletionStats {
-    constructor() {
-        super(...arguments);
-        this.year = 2000;
+    constructor(year, scoresCount, beatmapCount) {
+        super(scoresCount, beatmapCount);
+        this.year = year;
     }
 }
 class PackData {
@@ -38,12 +38,18 @@ class PackData {
 }
 function getData() {
     let rawPackData = JSON.parse(fs_1.default.readFileSync("./data/PackToMap.json", 'utf8'));
+    let rawScoreData = JSON.parse(fs_1.default.readFileSync("./data/PackScoreData.json", 'utf8'));
     const data = new PackData();
     const LAST_PACK = 341;
     for (let packId = 1; packId <= LAST_PACK; packId++) {
-        const singlePackData = rawPackData["S" + packId];
-        console.log(singlePackData);
-        data.beatmap_packs[packId] = new PackStats();
+        const packMapIds = rawPackData["S" + packId];
+        let currentPackClears = 0;
+        packMapIds.forEach((mapId) => {
+            if (rawScoreData[mapId.toString()]['score'] > 0) {
+                currentPackClears++;
+            }
+        });
+        data.beatmap_packs[packId] = new PackStats(currentPackClears, packMapIds.length);
     }
     /*
         const packs_completion_row = packs_completion_rows[0]
@@ -67,7 +73,9 @@ function getData() {
             scoresCount: completion_row.scoresCount,
             beatmapCount: completion_row.beatmapCount,
         } */
-    //console.log(data)
+    console.log(data.beatmap_packs[1]);
+    console.log(data.beatmap_packs[149]);
+    console.log(data.beatmap_packs[150]);
     return data;
 }
 function formatNumber(number) {

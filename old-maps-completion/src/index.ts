@@ -15,14 +15,23 @@ if (fontPath) {
 const font = 'Aller';
 
 class CompletionStats {
-	scoresCount = 0
-	beatmapCount = 0
+	scoresCount: number;
+	beatmapCount: number;
+
+	constructor(scoresCount = 0, beatmapCount = 0){
+		this.scoresCount = scoresCount;
+		this.beatmapCount = beatmapCount;
+	}
 }
 
 class PackStats extends CompletionStats { }
 
 class YearStats extends CompletionStats {
-	year = 2000
+	year: number
+	constructor(year : number, scoresCount: number, beatmapCount: number){
+		super(scoresCount, beatmapCount);
+		this.year = year;
+	}
 }
 
 class PackData {
@@ -35,22 +44,33 @@ class PackData {
 function getData(): PackData {
 
 	let rawPackData = JSON.parse(fs.readFileSync("./data/PackToMap.json", 'utf8'));
+	let rawScoreData = JSON.parse(fs.readFileSync("./data/PackScoreData.json", 'utf8'));
 	const data = new PackData();
 	
 	const LAST_PACK = 341;
 	
-	for (let packId = 1; packId <= LAST_PACK; packId++) {
-		const singlePackData = rawPackData["S" + packId];
-		console.log(singlePackData);
-		data.beatmap_packs[packId] = new PackStats();
-	}
-/* 
-	const packs_completion_row = packs_completion_rows[0]
-	data.packs_completion = {
-		scoresCount: packs_completion_row.scoresCount,
-		beatmapCount: packs_completion_row.beatmapCount,
-	}
+	let totalClears = 0;
+	let totalMaps = 0;
 
+	for (let packId = 1; packId <= LAST_PACK; packId++) {
+		const packMapIds: number[] = rawPackData["S" + packId];
+		
+		let currentPackClears = 0;
+		packMapIds.forEach((mapId: number) => {
+			if(rawScoreData[mapId.toString()]['score'] > 0){
+				currentPackClears++;
+				totalClears++;
+			}
+		});
+
+		totalMaps += packMapIds.length;
+
+		data.beatmap_packs[packId] = new PackStats(currentPackClears, packMapIds.length);
+	}
+ 
+	
+	data.packs_completion = new CompletionStats(totalClears, totalMaps);
+/*
 	data.years = []
 	for (let i = 0; i < years_rows.length; i++) {
 		const row = years_rows[i];
@@ -67,7 +87,9 @@ function getData(): PackData {
 		beatmapCount: completion_row.beatmapCount,
 	} */
 	
-	//console.log(data)
+	console.log(data.beatmap_packs[1])
+	console.log(data.beatmap_packs[149])
+	console.log(data.beatmap_packs[150])
 	
 	return data;
 }
