@@ -18,17 +18,23 @@ class CompletionStats {
 	scoresCount: number;
 	beatmapCount: number;
 
-	constructor(scoresCount = 0, beatmapCount = 0){
+	constructor(scoresCount = 0, beatmapCount = 0) {
 		this.scoresCount = scoresCount;
 		this.beatmapCount = beatmapCount;
 	}
 }
 
-class PackStats extends CompletionStats { }
+class PackStats extends CompletionStats {
+	packId: number;
+	constructor(packId: number, scoresCount: number, beatmapCount: number) {
+		super(scoresCount, beatmapCount);
+		this.packId = packId;
+	}
+}
 
 class YearStats extends CompletionStats {
 	year: number
-	constructor(year : number, scoresCount: number, beatmapCount: number){
+	constructor(year: number, scoresCount: number, beatmapCount: number) {
 		super(scoresCount, beatmapCount);
 		this.year = year;
 	}
@@ -36,9 +42,14 @@ class YearStats extends CompletionStats {
 
 class PackData {
 	beatmap_packs: PackStats[] = [];
-	packs_completion: CompletionStats = new CompletionStats();
+	approved_packs: PackStats[] = [];
+	completion: CompletionStats = new CompletionStats();
 	years: YearStats[] = [];
-	completion: any;
+}
+
+class User {
+	userId = 9991650;
+	date = "2014-01-26"
 }
 
 function getData(): PackData {
@@ -46,32 +57,29 @@ function getData(): PackData {
 	let rawPackData = JSON.parse(fs.readFileSync("./data/PackToMap.json", 'utf8'));
 	let rawScoreData = JSON.parse(fs.readFileSync("./data/PackScoreData.json", 'utf8'));
 	let rawYearData = JSON.parse(fs.readFileSync("./data/YearToMap.json", 'utf8'));
-	
+
 	const data = new PackData();
-	
+
 	const LAST_PACK = 341;
-	
-	let totalClears = 0;
-	let totalMaps = 0;
+
 
 	for (let packId = 1; packId <= LAST_PACK; packId++) {
 		const packMapIds: number[] = rawPackData["S" + packId];
-		
+
 		let currentPackClears = 0;
 		packMapIds.forEach((mapId: number) => {
-			if(rawScoreData[mapId.toString()]['score'] > 0){
+			if (rawScoreData[mapId.toString()]['score'] > 0) {
 				currentPackClears++;
-				totalClears++;
 			}
 		});
 
-		totalMaps += packMapIds.length;
 
-		data.beatmap_packs[packId] = new PackStats(currentPackClears, packMapIds.length);
+		data.beatmap_packs[packId] = new PackStats(packId, currentPackClears, packMapIds.length);
 	}
- 
-	
-	data.packs_completion = new CompletionStats(totalClears, totalMaps);
+
+	let totalClears = 0;
+	let totalMaps = 0;
+
 	const years = Object.keys(rawYearData)
 
 	data.years = []
@@ -79,9 +87,11 @@ function getData(): PackData {
 
 		let currentYearClears = 0
 		rawYearData[year].forEach((mapId: number) => {
-			if(rawScoreData[mapId.toString()]['score'] > 0){
+			if (rawScoreData[mapId.toString()]['score'] > 0) {
 				currentYearClears++;
+				totalClears++;
 			}
+			totalMaps++;
 		});
 
 		data.years.push(new YearStats(
@@ -90,12 +100,13 @@ function getData(): PackData {
 			rawYearData[year].length
 		));
 	});
-	
-	
+
+	data.completion = new CompletionStats(totalClears, totalMaps);
+
 	console.log(data.beatmap_packs[1])
 	console.log(data.beatmap_packs[149])
 	console.log(data.beatmap_packs[150])
-	
+
 	console.log(data.years)
 
 	return data;
@@ -124,33 +135,6 @@ function defineRoundedRect(ctx: { beginPath: () => void; moveTo: (arg0: any, arg
 	ctx.closePath();
 }
 
-function drawHeader(ctx: CanvasRenderingContext2D) {
-	const headerText = 'Join Date Completion';
-	const headerFontSize = 72;
-	const headerFontColor = 'white';
-	const headerFont = `bold ${headerFontSize}px ${font}`;
-
-	// Save the current shadow settings
-	const { shadowBlur, shadowColor, shadowOffsetX, shadowOffsetY } = ctx;
-
-	// Set the shadow effect for the header text
-	ctx.shadowBlur = 10;
-	ctx.shadowColor = 'black';
-	ctx.shadowOffsetX = 4;
-	ctx.shadowOffsetY = 4;
-
-	ctx.font = headerFont;
-	ctx.fillStyle = headerFontColor;
-	ctx.textAlign = 'center';
-	ctx.fillText(headerText, 890, 100);
-
-	// Reset the shadow settings
-	ctx.shadowBlur = shadowBlur;
-	ctx.shadowColor = shadowColor;
-	ctx.shadowOffsetX = shadowOffsetX;
-	ctx.shadowOffsetY = shadowOffsetY;
-}
-
 function drawPackCompletion(ctx: CanvasRenderingContext2D) {
 	const headerText = 'Beatmap Packs';
 	const headerFontSize = 42;
@@ -169,7 +153,7 @@ function drawPackCompletion(ctx: CanvasRenderingContext2D) {
 	ctx.font = headerFont;
 	ctx.fillStyle = headerFontColor;
 	ctx.textAlign = 'center';
-	ctx.fillText(headerText, 445, 170);
+	ctx.fillText(headerText, 445, 40);
 
 	// Reset the shadow settings
 	ctx.shadowBlur = shadowBlur;
@@ -196,7 +180,7 @@ function drawYears(ctx: CanvasRenderingContext2D) {
 	ctx.font = headerFont;
 	ctx.fillStyle = headerFontColor;
 	ctx.textAlign = 'center';
-	ctx.fillText(headerText, 1335, 170);
+	ctx.fillText(headerText, 1335, 40);
 
 	// Reset the shadow settings
 	ctx.shadowBlur = shadowBlur;
@@ -205,7 +189,7 @@ function drawYears(ctx: CanvasRenderingContext2D) {
 	ctx.shadowOffsetY = shadowOffsetY;
 }
 
-function drawDivider(ctx: CanvasRenderingContext2D,) {
+function drawDivider(ctx: CanvasRenderingContext2D, height: number) {
 	const { shadowBlur, shadowColor, shadowOffsetX, shadowOffsetY } = ctx;
 
 	// Set the shadow effect for the line
@@ -216,8 +200,8 @@ function drawDivider(ctx: CanvasRenderingContext2D,) {
 
 	// Draw the line
 	ctx.beginPath();
-	ctx.moveTo(890, 150);
-	ctx.lineTo(890, 700);
+	ctx.moveTo(890, 20);
+	ctx.lineTo(890, height);
 	ctx.lineWidth = 3;
 	ctx.strokeStyle = 'white';
 	ctx.stroke();
@@ -229,49 +213,27 @@ function drawDivider(ctx: CanvasRenderingContext2D,) {
 	ctx.shadowOffsetY = shadowOffsetY;
 }
 
-function drawPackSquares(ctx: CanvasRenderingContext2D, data: any[]) {
-	const boxWidth = 32;
-	const boxHeight = 32;
-	const gap = 5;
-	const rows = 10;
-	const cols = 20;
-	const startX = (890 - (cols * (boxWidth + gap)) + gap) / 2 + 40;
-	const startY = 200;
-	const labelGap = 10;
+function drawPackSquares(ctx: CanvasRenderingContext2D, data: PackStats[], approved_data: PackStats[]) {
+	const boxWidth = 28;
+	const boxHeight = boxWidth;
+	const gap = 4;
+	const rows = Math.ceil(data.length / 25);
+	const cols = 25;
+	const startX = (890 - (cols * (boxWidth + gap)) + gap) / 2;
+	const startY = 70;
 	const size = 32;
 
+	const { shadowBlur, shadowColor, shadowOffsetX, shadowOffsetY } = ctx;
+
 	for (let row = 0; row < rows; row++) {
-		const rowStart = row * cols + 1;
-		const rowEnd = rowStart + cols - 1;
-		const labelX = startX - labelGap;
-		const labelY = startY + row * (boxHeight + gap) + boxHeight / 2 + 6;
-
-		const { shadowBlur, shadowColor, shadowOffsetX, shadowOffsetY } = ctx;
-
-		// Set the shadow effect for the line
-		ctx.shadowBlur = 3;
-		ctx.shadowColor = 'black';
-		ctx.shadowOffsetX = 2;
-		ctx.shadowOffsetY = 2;
-
-		// Draw the row label
-		ctx.font = `bold 18px ${font}`;
-		ctx.fillStyle = 'white';
-		ctx.textAlign = 'right';
-		ctx.fillText(`${rowStart}-${rowEnd}`, labelX, labelY);
-
-		// Reset the shadow settings
-		ctx.shadowBlur = shadowBlur;
-		ctx.shadowColor = shadowColor;
-		ctx.shadowOffsetX = shadowOffsetX;
-		ctx.shadowOffsetY = shadowOffsetY;
 
 		for (let col = 0; col < cols; col++) {
 			const x = startX + col * (boxWidth + gap);
 			const y = startY + row * (boxHeight + gap);
-			const packNumber = row * cols + col + 1;
-			const packData = data[packNumber];
+			const packNumber = row * cols + col;
+			const packData = data[packNumber + 1];
 			const scorePercent = packData?.beatmapCount ? packData.scoresCount / packData.beatmapCount : 0;
+			if (!packData) continue;
 
 			// Draw the square
 			ctx.fillStyle = `hsl(${scorePercent * 115}, 80%, 50%)`;
@@ -289,128 +251,77 @@ function drawPackSquares(ctx: CanvasRenderingContext2D, data: any[]) {
 			ctx.fill();
 
 			// Draw the pack number on top of the square
-			// ctx.fillStyle = 'black';
-			// ctx.font = `16px ${font}`;
-			// ctx.textAlign = 'center';
-			// ctx.fillText(packNumber, x + boxWidth/2, y + boxHeight/2 + 2);
+			ctx.shadowBlur = 3;
+			ctx.shadowColor = 'black';
+			ctx.shadowOffsetX = 1;
+			ctx.shadowOffsetY = 1;
+
+			ctx.fillStyle = 'white';
+			ctx.font = `${packData.packId > 999 ? "12px" : "14px"} ${font}`;
+			ctx.textAlign = 'center';
+			ctx.fillText(packData.packId.toString(), x + boxWidth / 2, y + boxHeight / 2 + 5);
+
+			ctx.shadowBlur = shadowBlur;
+			ctx.shadowColor = shadowColor;
+			ctx.shadowOffsetX = shadowOffsetX;
+			ctx.shadowOffsetY = shadowOffsetY;
 
 		}
 	}
-}
 
-function drawPacksProgressbar(ctx: CanvasRenderingContext2D, data: CompletionStats) {
-	const completionPercentage = data.scoresCount / data.beatmapCount * 100;
-	const hue = completionPercentage / 100 * 115;
+	// Draw the final row with approved packs
+	const finalRowY = startY + rows * (boxHeight + gap);
 
-	// Define the progress bar dimensions
-	const barWidth = 890 * 0.917;
-	const barHeight = 32;
-	const barX = (890 - barWidth) / 2;
-	const barY = 630 - barHeight;
-	const filledWidth = (barWidth * completionPercentage) / 100;
+	for (let col = 0; col < cols; col++) {
+		const x = startX + col * (boxWidth + gap);
+		const approvedPack = approved_data[col];
+		const scorePercent = approvedPack?.beatmapCount ? approvedPack.scoresCount / approvedPack.beatmapCount : 0;
+		if (!approvedPack) continue;
 
-	// Set up the shadow effect for the progress bar background
-	ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-	ctx.shadowBlur = 1;
-
-	// Draw the progress bar background with rounded corners
-	defineRoundedRect(ctx, barX, barY, barWidth, barHeight, 5);
-	ctx.fill();
-
-	// Reset the shadow settings
-	ctx.shadowColor = 'transparent';
-	ctx.shadowBlur = 0;
-
-	// Draw the filled progress bar
-	ctx.fillStyle = `hsl(${hue}, 80%, 50%)`;
-	defineRoundedRect(ctx, barX, barY, filledWidth, barHeight, 5);
-	ctx.fill();
-
-	// Define the gradient for the filled progress bar
-	const gradient = ctx.createLinearGradient(barX, barY, barX, barY + barHeight);
-	gradient.addColorStop(0, 'hsla(0, 0%, 100%, 0.3)');
-	gradient.addColorStop(0.5, 'hsla(0, 0%, 100%, 0)');
-	gradient.addColorStop(1, 'hsla(0, 0%, 100%, 0.3)');
-
-	// Draw the reflection gradient
-	ctx.fillStyle = gradient;
-	defineRoundedRect(ctx, barX, barY, filledWidth, barHeight, 5);
-	ctx.fill();
-
-	// Draw the text with shadow in the middle of the progress bar
-	const text = `${completionPercentage.toFixed(2)}% ~ ${formatNumber(data.scoresCount)} / ${formatNumber(data.beatmapCount)}`;
-	const textX = barX + barWidth / 2;
-	const textY = barY + barHeight / 2;
-
-	ctx.font = `bold 22px ${font}`;
-	ctx.textAlign = 'center';
-	ctx.textBaseline = 'middle';
-
-	// Set up the shadow effect for the text
-	ctx.shadowColor = 'black';
-	ctx.shadowOffsetX = 2;
-	ctx.shadowOffsetY = 2;
-	ctx.shadowBlur = 3;
-
-	// Draw the text
-	ctx.fillStyle = '#ffffff';
-	ctx.fillText(text, textX, textY);
-
-	// Reset the shadow settings
-	ctx.shadowColor = 'transparent';
-	ctx.shadowOffsetX = 0;
-	ctx.shadowOffsetY = 0;
-	ctx.shadowBlur = 0;
-}
-
-function drawLegend(ctx: CanvasRenderingContext2D) {
-	// Set up the shadow effect for the text
-	ctx.shadowColor = 'black';
-	ctx.shadowOffsetX = 2;
-	ctx.shadowOffsetY = 2;
-	ctx.shadowBlur = 4;
-
-	// Draw the text
-	ctx.font = `bold 25px ${font}`;
-	ctx.fillStyle = '#ffffff';
-	ctx.fillText("Less Clears", 120, 680);
-	ctx.fillText("More Clears", 750, 680);
-
-	// Reset the shadow settings
-	ctx.shadowColor = 'transparent';
-	ctx.shadowOffsetX = 0;
-	ctx.shadowOffsetY = 0;
-	ctx.shadowBlur = 0;
-
-	const squares = [
-		{ x: 240, hue: 0 },
-		{ x: 360, hue: 28 },
-		{ x: 480, hue: 57 },
-		{ x: 600, hue: 115 }
-	]
-
-	for (const square of squares) {
-		ctx.fillStyle = `hsl(${square.hue}, 80%, 50%)`;
-		defineRoundedRect(ctx, square.x, 665, 32, 32, 5);
+		// Draw the square
+		ctx.fillStyle = `hsl(${scorePercent * 115}, 80%, 50%)`;
+		defineRoundedRect(ctx, x, finalRowY, boxWidth, boxHeight, 5);
 		ctx.fill();
 
-		const gradient = ctx.createLinearGradient(square.x, 665, square.x, 665 + 32);
+		// create a gradient for the reflection
+		const gradient = ctx.createLinearGradient(x, finalRowY, x, finalRowY + size);
 
 		gradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
 		gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+		// fill the square with the gradient
 		ctx.fillStyle = gradient;
 		ctx.fill();
+
+		// Draw the pack number on top of the square
+		ctx.shadowBlur = 3;
+		ctx.shadowColor = 'black';
+		ctx.shadowOffsetX = 1;
+		ctx.shadowOffsetY = 1;
+
+		ctx.fillStyle = 'white';
+		ctx.font = `15px ${font}`;
+		ctx.textAlign = 'center';
+		ctx.fillText("A" + approvedPack.packId, x + boxWidth / 2, finalRowY + boxHeight / 2 + 5);
+
+		ctx.shadowBlur = shadowBlur;
+		ctx.shadowColor = shadowColor;
+		ctx.shadowOffsetX = shadowOffsetX;
+		ctx.shadowOffsetY = shadowOffsetY;
 	}
 }
 
-function drawYearsProgressbars(ctx: CanvasRenderingContext2D, yearsData: string | any[]) {
-	const startX = 990;
-	const startY = 200;
-	const barWidth = 730;
+function drawYearsProgressbars(ctx: CanvasRenderingContext2D, yearsData: YearStats[], totalHeight: number) {
+	const startX = 994;
+	const startY = 70;
+	const barWidth = 738;
+	const barCount = yearsData.length;
 	const barHeight = 32;
-	const barMargin = 51;
+	const totalBarsHeight = barCount * barHeight;
+	const remainingHeight = totalHeight - totalBarsHeight;
+	const barMargin = remainingHeight / (barCount - 1);
 
-	for (let i = 0; i < yearsData.length; i++) {
+	for (let i = 0; i < barCount; i++) {
 		const yearData = yearsData[i];
 		const { year, scoresCount, beatmapCount } = yearData;
 		const completionPercentage = scoresCount / beatmapCount * 100;
@@ -449,7 +360,8 @@ function drawYearsProgressbars(ctx: CanvasRenderingContext2D, yearsData: string 
 		// Draw the year text
 		ctx.font = `bold 22px ${font}`;
 		ctx.fillStyle = '#ffffff';
-		ctx.fillText(year, barX - 35, barY + 15);
+		ctx.textBaseline = 'middle';
+		ctx.fillText(year.toString(), barX - 35, barY + barHeight / 2);
 
 		// Draw the text with shadow in the middle of the progress bar
 		const text = `${completionPercentage.toFixed(2)}% ~ ${formatNumber(scoresCount)} / ${formatNumber(beatmapCount)}`;
@@ -458,7 +370,6 @@ function drawYearsProgressbars(ctx: CanvasRenderingContext2D, yearsData: string 
 
 		ctx.font = `bold 22px ${font}`;
 		ctx.textAlign = 'center';
-		ctx.textBaseline = 'middle';
 		ctx.fillText(text, textX, textY);
 
 		// Reset the shadow settings
@@ -469,9 +380,10 @@ function drawYearsProgressbars(ctx: CanvasRenderingContext2D, yearsData: string 
 	}
 }
 
-function drawCompletionHeader(ctx: CanvasRenderingContext2D) {
-	const text = "Completion up to ppv2";
-	const barY = 200 + (32 + 51) * 4; // Y-coordinate of the 5th progress bar
+function drawCompletionHeader(ctx: CanvasRenderingContext2D, date: string, height: number) {
+	const text = `Old Map Completion`;
+	//const barY = 200 + (32 + 51) * 4; // Y-coordinate of the 5th progress bar
+	const barY = height;
 
 	// Set the shadow effect for the header text
 	ctx.shadowBlur = 5;
@@ -482,7 +394,7 @@ function drawCompletionHeader(ctx: CanvasRenderingContext2D) {
 	ctx.font = `bold 28px ${font}`;
 	ctx.fillStyle = '#ffffff';
 	ctx.textAlign = 'center';
-	ctx.fillText(text, 1335, barY + 80);
+	ctx.fillText(text, 890, barY + 60);
 
 	// Reset the shadow settings
 	ctx.shadowColor = 'transparent';
@@ -491,10 +403,10 @@ function drawCompletionHeader(ctx: CanvasRenderingContext2D) {
 	ctx.shadowBlur = 0;
 }
 
-function drawCompletionProgressbar(ctx: CanvasRenderingContext2D, completionData: { scoresCount: number; beatmapCount: number; }) {
-	const startX = 930;
-	const startY = 200 + (32 + 51) * 4 + 130; // Y-coordinate below the completion header
-	const barWidth = 790;
+function drawCompletionProgressbar(ctx: CanvasRenderingContext2D, completionData: CompletionStats, height: number) {
+	const startX = 48;
+	const startY = height + 30;
+	const barWidth = 1684;
 	const barHeight = 32;
 
 	const completionPercentage = completionData.scoresCount / completionData.beatmapCount * 100;
@@ -545,11 +457,13 @@ function drawCompletionProgressbar(ctx: CanvasRenderingContext2D, completionData
 	ctx.shadowBlur = 0;
 }
 
-function createImage() {
+async function createImage(user: User) {
 	const data = getData();
 
+	const canvasHeight = data.beatmap_packs.length / 25 * (28 + 4) + 220
+	const yearsBarsHeight = Math.ceil((data.beatmap_packs.length + data.approved_packs.length) / 25) * (28 + 4) + 4
 	// Create canvas
-	const canvas = createCanvas(1780, 760);
+	const canvas = createCanvas(1780, canvasHeight);
 	const ctx = canvas.getContext('2d');
 
 	// Set background color to transparent
@@ -557,21 +471,21 @@ function createImage() {
 	//ctx.fillStyle = 'rgba(56, 46, 50, 1)';
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-	drawHeader(ctx);
-	drawPackCompletion(ctx);
-	drawDivider(ctx);
-	drawYears(ctx);
-	drawPackSquares(ctx, data.beatmap_packs);
-	drawPacksProgressbar(ctx, data.packs_completion);
-	drawLegend(ctx)
-	drawYearsProgressbars(ctx, data.years)
-	drawCompletionHeader(ctx)
-	// drawCompletionProgressbar(ctx, data.completion)
+	drawPackCompletion(ctx)
+	drawYears(ctx)
+	drawPackSquares(ctx, data.beatmap_packs, data.approved_packs)
+	drawYearsProgressbars(ctx, data.years, yearsBarsHeight)
+	drawCompletionHeader(ctx, user.date, yearsBarsHeight + 40)
+	drawCompletionProgressbar(ctx, data.completion, yearsBarsHeight + 40 + 60)
+	drawDivider(ctx, yearsBarsHeight + 40 + 40)
 
 	// Save PNG file
+	const fileName = `${user.userId}_completion.png`;
+	const completeFilePath = path.join(filePath, fileName);
 	const buffer = canvas.toBuffer('image/png');
 	fs.writeFileSync(completeFilePath, buffer);
-	console.log('The PNG file was created.');
+	console.log(`The PNG file for ${user.userId} was created.`);
+	return
 }
 
-createImage();
+createImage(new User());
