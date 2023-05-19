@@ -62,6 +62,7 @@ function getData() {
     let rawYearData = JSON.parse(fs_1.default.readFileSync("./data/YearToMap.json", 'utf8'));
     const data = new PackData();
     const LAST_PACK = 341;
+    const LAST_APPROVED_PACK = 19;
     for (let packId = 1; packId <= LAST_PACK; packId++) {
         const packMapIds = rawPackData["S" + packId];
         let currentPackClears = 0;
@@ -71,6 +72,31 @@ function getData() {
             }
         });
         data.beatmap_packs[packId] = new PackStats(packId, currentPackClears, packMapIds.length);
+    }
+    for (let packId = 1; packId <= LAST_APPROVED_PACK; packId++) {
+        const packMapIds = rawPackData["SA" + packId];
+        let currentPackClears = 0;
+        packMapIds.forEach((mapId) => {
+            if (rawScoreData[mapId.toString()]['score'] > 0) {
+                currentPackClears++;
+            }
+        });
+        // Offset for packs 902 and 903
+        let offset = 0;
+        if (packId >= 15) {
+            offset = 2;
+        }
+        data.approved_packs[packId + offset] = new PackStats(packId + offset, currentPackClears, packMapIds.length);
+    }
+    for (let packId = 902; packId <= 903; packId++) {
+        const packMapIds = rawPackData["S" + packId];
+        let currentPackClears = 0;
+        packMapIds.forEach((mapId) => {
+            if (rawScoreData[mapId.toString()]['score'] > 0) {
+                currentPackClears++;
+            }
+        });
+        data.approved_packs[packId - 902 + 15] = new PackStats(packId - 902 + 15, currentPackClears, packMapIds.length);
     }
     let totalClears = 0;
     let totalMaps = 0;
@@ -228,7 +254,7 @@ function drawPackSquares(ctx, data, approved_data) {
     const finalRowY = startY + rows * (boxHeight + gap);
     for (let col = 0; col < cols; col++) {
         const x = startX + col * (boxWidth + gap);
-        const approvedPack = approved_data[col];
+        const approvedPack = approved_data[col + 1];
         const scorePercent = (approvedPack === null || approvedPack === void 0 ? void 0 : approvedPack.beatmapCount) ? approvedPack.scoresCount / approvedPack.beatmapCount : 0;
         if (!approvedPack)
             continue;
@@ -249,7 +275,7 @@ function drawPackSquares(ctx, data, approved_data) {
         ctx.shadowOffsetX = 1;
         ctx.shadowOffsetY = 1;
         ctx.fillStyle = 'white';
-        ctx.font = `15px ${font}`;
+        ctx.font = `14px ${font}`;
         ctx.textAlign = 'center';
         ctx.fillText("A" + approvedPack.packId, x + boxWidth / 2, finalRowY + boxHeight / 2 + 5);
         ctx.shadowBlur = shadowBlur;
@@ -278,19 +304,21 @@ function drawYearsProgressbars(ctx, yearsData, totalHeight) {
         defineRoundedRect(ctx, barX, barY, barWidth, barHeight, 5);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.fill();
-        // Draw the filled progress bar
-        ctx.fillStyle = `hsl(${completionPercentage}, 80%, 50%)`;
-        defineRoundedRect(ctx, barX, barY, filledWidth, barHeight, 5);
-        ctx.fill();
-        // Define the gradient for the filled progress bar
-        const gradient = ctx.createLinearGradient(barX, barY, barX, barY + barHeight);
-        gradient.addColorStop(0, 'hsla(0, 0%, 100%, 0.3)');
-        gradient.addColorStop(0.5, 'hsla(0, 0%, 100%, 0)');
-        gradient.addColorStop(1, 'hsla(0, 0%, 100%, 0.3)');
-        // Draw the reflection gradient
-        ctx.fillStyle = gradient;
-        defineRoundedRect(ctx, barX, barY, filledWidth, barHeight, 5);
-        ctx.fill();
+        if (completionPercentage > 0) {
+            // Draw the filled progress bar
+            ctx.fillStyle = `hsl(${completionPercentage}, 80%, 50%)`;
+            defineRoundedRect(ctx, barX, barY, filledWidth, barHeight, 5);
+            ctx.fill();
+            // Define the gradient for the filled progress bar
+            const gradient = ctx.createLinearGradient(barX, barY, barX, barY + barHeight);
+            gradient.addColorStop(0, 'hsla(0, 0%, 100%, 0.3)');
+            gradient.addColorStop(0.5, 'hsla(0, 0%, 100%, 0)');
+            gradient.addColorStop(1, 'hsla(0, 0%, 100%, 0.3)');
+            // Draw the reflection gradient
+            ctx.fillStyle = gradient;
+            defineRoundedRect(ctx, barX, barY, filledWidth, barHeight, 5);
+            ctx.fill();
+        }
         // Set up the shadow effect for the text
         ctx.shadowColor = 'black';
         ctx.shadowOffsetX = 2;
